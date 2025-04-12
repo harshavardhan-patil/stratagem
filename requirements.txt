@@ -21,4 +21,6 @@ langchain_openai
 ollama
 selenium
 webdriver-manager
+transformers
+torch
 -e .

@@ -11,7 +11,7 @@ port = os.getenv("POSTGRES_PORT")
 dbname = os.getenv("POSTGRES_DB")
 user = os.getenv("POSTGRES_USER")
 password = os.getenv("POSTGRES_PASSWORD")
-model = os.getenv("MODEL", "gpt-4") # Default to GPT-4 if not specified
+emb_size = 1024  # for mxbai-embed-large
 
 def connect_to_db():
     """Establish connection to PostgreSQL database."""
@@ -74,11 +74,7 @@ def setup_db():
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         raw_metadata JSONB
     )
-    """)
-
-    # Set embedding size based on model
-    emb_size = 1536  # same for mxbai-embed-large and OpenAI embeddings
-   
+    """)   
 
     cursor.execute(f"""
     CREATE TABLE IF NOT EXISTS case_study_chunks (
