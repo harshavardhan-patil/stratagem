@@ -59,3 +59,6 @@ BITCAMP 2025 ML Track
 
 --------
 
+
+docker exec -t strategic-synthesis-ai-postgres-1 pg_dump -U postgres -d strats_db > strats_db.dump
+docker exec -i strategic-synthesis-ai-postgres-1 psql -U postgres -d strats_db < strats_db.dump
