@@ -4,6 +4,35 @@ st.set_page_config(layout='wide', initial_sidebar_state='expanded', page_title="
 
 import os
 import streamlit as st
+import base64
+
+# Function to set background image
+def set_jpg_as_page_bg(bg):
+    st.markdown(
+         f"""
+         <style>
+         .stApp {{
+             background: url(data:image/jpg;base64,{base64.b64encode(open(bg, "rb").read()).decode()});
+             background-size: cover
+         }}
+         </style>
+         """,
+         unsafe_allow_html=True
+     )
+
+# Function to remove background image and set beige background color
+def set_beige_bg():
+    st.markdown(
+         """
+         <style>
+         .stApp {
+             background-image: none;
+             background-color: #f5f0e5; /* Light beige color similar to banner3.png */
+         }
+         </style>
+         """,
+         unsafe_allow_html=True
+     )
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_ollama import ChatOllama
@@ -72,9 +101,13 @@ def extract_pdf_text(file):
 # Function to handle starting the app
 def start_app():
     st.session_state.welcome_complete = True
+    set_beige_bg()  # Set beige background when moving to main app
 
 # Welcome Screen
 if not st.session_state.welcome_complete:
+    # Set background image for welcome screen
+    set_jpg_as_page_bg('static/banner3.png')
+    
     col1, col2, col3 = st.columns([1, 3, 1])
     
     with col2:
@@ -93,7 +126,7 @@ if not st.session_state.welcome_complete:
         st.markdown(
             """
             <h1 style="text-align: center; font-size: 2.5rem; margin-bottom: 30px;">
-            Your friendly neighborhood business advisor
+            Your friendly neighborhood Business Advisor :)
             </h1>
             """, 
             unsafe_allow_html=True
@@ -103,7 +136,7 @@ if not st.session_state.welcome_complete:
             """
             <p style="text-align: center; font-size: 1.2rem; margin-bottom: 40px; color: #555;">
             Strategic Synthesis AI analyzes your business data, generates comprehensive strategy plans, 
-            and builds tailored presentations for different stakeholders using the power of AI
+            and builds tailored presentations for different stakeholders using the power of AI 
             </p>
             """, 
             unsafe_allow_html=True
@@ -111,12 +144,14 @@ if not st.session_state.welcome_complete:
         
         col_btn1, col_btn2, col_btn3 = st.columns([1, 2, 1])
         with col_btn2:
-            if st.button("Lets get workin'!", use_container_width=True, type="primary"):
+            if st.button("Let's get started!", use_container_width=True, type="primary"):
                 start_app()
                 st.rerun()
 
 # Main Application
 else:
+    # Set beige background when in main app
+    set_beige_bg()
     st.title("Strategic Synthesis AI")
 
     # File uploader
