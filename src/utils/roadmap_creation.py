@@ -156,7 +156,7 @@ def generate_roadmap(chat_history):
     {prompt}
 
 
-    Now create a python code named as combined_viz.py which incorporates both python codes generated above and ensures that plots generate are saved in the format img1.jpg, img2.jpg and so on.
+    Now create a python code named as combined_viz.py which incorporates both python codes generated above and ensures that plots generate are saved in the root directoy in format img1.jpg, img2.jpg and so on. It is EXTREMELY IMPORTANT that these images are stored in root directory and in the form img1.jpg, img2.jpg and so on
 
     Please do generate the 6 month and 1 year plan if details are mentioned in the prompt similar to that of 3 month plan. Again combine all the slides using the presentation code provided earlier.
 
