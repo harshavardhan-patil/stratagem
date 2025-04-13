@@ -62,23 +62,32 @@ def extract_pdf_text(file):
 st.set_page_config(page_title="Strategy Synthesis AI", layout="wide")
 st.title("Strategy Synthesis AI")
 
+# Initialize session state to track if case studies have been fetched
+if 'case_studies_fetched' not in st.session_state:
+    st.session_state.case_studies_fetched = False
+    st.session_state.context_prompt = ""
+
 # File uploader
-uploaded_files = st.file_uploader("📎 Attach relevant files", accept_multiple_files=True)
+uploaded_files = st.file_uploader("Attach anything that will help me understand your business 😄", accept_multiple_files=True)
 attached_text = ""  # Store all uploaded content here
 
 if uploaded_files:
-    st.markdown("**Attached Files:**")
     for file in uploaded_files:
-        st.markdown(f"📄 `{file.name}`")
         extracted = extract_text(file)
         attached_text += f"\n\n--- File: {file.name} ---\n{extracted}"
+    
+    # Only fetch case studies if we have new content and haven't fetched them yet
+    if attached_text and not st.session_state.case_studies_fetched:
+        with st.spinner('Tapping into the infinite wisdom of universe...'):
+            st.session_state.context_prompt = str(get_rich_case_studies(attached_text)).replace("{", "{{").replace("}", "}}")
+            st.session_state.case_studies_fetched = True
+            st.success("Case studies retrieved successfully!")
 
 llm = get_llm()
 
-context_prompt = ""
-if attached_text != "":
-    st.chat_message('assistant').write("*Searching for relevant case studies...*")
-    context_prompt = str(get_rich_case_studies(attached_text)).replace("{", "{{").replace("}", "}}")
+# Use the stored context prompt from session state
+context_prompt = st.session_state.context_prompt
+
 # Prompt Template (inject file content here)
 system_prompt = f"""
 You are a world-class Strategic Business Advisor helping businesses across industries design effective business strategies to support growth, innovation, and long-term success.
@@ -87,6 +96,18 @@ Carefully analyze the content provided by the user (if it is provided) to unders
 
 You should explicitly refer to the reference case studies provided by the system to craft thoughtful, tailored, and actionable responses to the user's questions.
 It is very important to provide reference http URLs from the Relevant Case Studies in your response
+
+Analyze the following key factors for your reponse:-
+1. 	Business Context Industry specifics (e.g., tech, FMCG, healthcare) -Market structure (monopoly, oligopoly, fragmented, etc.), Regulatory environment (local/global, highly regulated or not), Stage of business lifecycle (startup, growth, maturity, decline)
+2. 	Strategic Intent Vision/Mission alignment - Growth objectives (scale, profit, market leadership, innovation), Geographic goals (domestic focus vs global expansion), Long-term vs. short-term priorities
+3. 	Key Capability Inputs Core competencies (e.g., R&D, brand strength, distribution) - Technology maturity, Talent & leadership, Operational infrastructure
+4. 	Customer Dimensions Target segment behavior - Customer jobs to be done, Channel preferences (D2C, retail, B2B), Value perception and willingness to pay
+5. 	Competitive Forces Rivalry intensity - Barriers to entry, Threat of substitutes, Supplier/buyer power (Porter's Five Forces), Innovation speed in the industry
+6. 	Strategic Options Spectrum Growth levers (market penetration, product dev, M&A, diversification) - Business models (B2B/B2C, SaaS, subscription, platform), Differentiation methods (price, innovation, service, brand), Focus areas (niche vs mass market)
+7. 	Risk & Resilience Metrics Financial risk tolerance, Operational risk (supply chain fragility), Market volatility exposure, Crisis adaptability (e.g., COVID learnings)
+8. 	Measurement and Governance Key Performance Indicators (KPIs) -Feedback loops, Decision accountability, Scalability of strategy
+
+Based upon this analysis, what are the gaps in the existing business and develop detailed 3 month, 6 month and 1 year plan y first asking user what they want to know.
 
 Do not make up information or assumptions. If the user content is insufficient to fully answer a question, clearly say so and suggest what additional information would help.
 
@@ -135,4 +156,3 @@ if user_input := st.chat_input("How can I help?"):
     # New messages are saved to history automatically by Langchain during run
     config = {"configurable": {"session_id": "any"}}
     st.chat_message('ai').write_stream(chain_with_history.stream({"question": user_input}, config))
-        
