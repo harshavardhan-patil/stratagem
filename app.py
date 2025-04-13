@@ -1,3 +1,7 @@
+import streamlit as st
+
+st.set_page_config(layout='wide', initial_sidebar_state='expanded', page_title="Strategic Synthesis AI")
+
 import os
 import streamlit as st
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
@@ -11,6 +15,13 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.runnables.history import RunnableWithMessageHistory
 from src.data.rag import get_rich_case_studies
 from langchain_google_genai import ChatGoogleGenerativeAI
+
+# Initialize session states
+if 'welcome_complete' not in st.session_state:
+    st.session_state.welcome_complete = False
+if 'case_studies_fetched' not in st.session_state:
+    st.session_state.case_studies_fetched = False
+    st.session_state.context_prompt = ""
 
 # Model Settings
 model_provider = os.getenv("MODEL_PROVIDER", "ollama")  # 'ollama' or 'openai'
@@ -58,81 +69,140 @@ def extract_pdf_text(file):
             text += page.extract_text() or ""
     return text
 
-# Streamlit UI Setup
-st.set_page_config(page_title="Strategy Synthesis AI", layout="wide")
-st.title("Strategy Synthesis AI")
+# Function to handle starting the app
+def start_app():
+    st.session_state.welcome_complete = True
 
-# File uploader
-uploaded_files = st.file_uploader("📎 Attach relevant files", accept_multiple_files=True)
-attached_text = ""  # Store all uploaded content here
-
-if uploaded_files:
-    st.markdown("**Attached Files:**")
-    for file in uploaded_files:
-        st.markdown(f"📄 `{file.name}`")
-        extracted = extract_text(file)
-        attached_text += f"\n\n--- File: {file.name} ---\n{extracted}"
-
-llm = get_llm()
-
-context_prompt = ""
-if attached_text != "":
-    st.chat_message('assistant').write("*Searching for relevant case studies...*")
-    context_prompt = str(get_rich_case_studies(attached_text)).replace("{", "{{").replace("}", "}}")
-# Prompt Template (inject file content here)
-system_prompt = f"""
-You are a world-class Strategic Business Advisor helping businesses across industries design effective business strategies to support growth, innovation, and long-term success.
-
-Carefully analyze the content provided by the user (if it is provided) to understand their current business model, challenges, or goals.
-
-You should explicitly refer to the reference case studies provided by the system to craft thoughtful, tailored, and actionable responses to the user's questions.
-It is very important to provide reference http URLs from the Relevant Case Studies in your response
-
-Do not make up information or assumptions. If the user content is insufficient to fully answer a question, clearly say so and suggest what additional information would help.
-
-Be clear, insightful, and professional — your goal is to act as a trusted strategic advisor.
-
---- Attached User Content ---
-{attached_text}
-
---- Relevant Case Studies ---
-{context_prompt}
-
-"""
-
-# Set up memory
-msgs = StreamlitChatMessageHistory(key="langchain_messages")
-
-
-prompt = ChatPromptTemplate.from_messages(
-    [
-        ("system", system_prompt),
-        MessagesPlaceholder(variable_name="history"),
-        ("human", "{question}"),
-    ]
-)
-
-chain = prompt | llm
-chain_with_history = RunnableWithMessageHistory(
-    chain,
-    lambda session_id: msgs,
-    input_messages_key="question",
-    history_messages_key="history",
-)
-
-
-# Render current messages from StreamlitChatMessageHistory
-for msg in msgs.messages:
-    if msg.type == 'AIMessageChunk':
-        st.chat_message('ai').write(msg.content)
-    else:
-        st.chat_message(msg.type).write(msg.content)
-
-# If user inputs a new prompt, generate and draw a new response
-if user_input := st.chat_input("How can I help?"):
-    st.chat_message("human").write(user_input)
-
-    # New messages are saved to history automatically by Langchain during run
-    config = {"configurable": {"session_id": "any"}}
-    st.chat_message('ai').write_stream(chain_with_history.stream({"question": user_input}, config))
+# Welcome Screen
+if not st.session_state.welcome_complete:
+    col1, col2, col3 = st.columns([1, 3, 1])
+    
+    with col2:
+        st.markdown(
+            """
+            <div style="background-color: #222; padding: 30px; border-radius: 10px; margin-bottom: 20px; text-align: center;">
+                <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 10px;">
+                    <span style="color: #FFB627; font-size: 40px; margin-right: 10px;">&#9733;</span>
+                    <h1 style="color: white; margin: 0;">Strategic Synthesis AI</h1>
+                </div>
+            </div>
+            """, 
+            unsafe_allow_html=True
+        )
         
+        st.markdown(
+            """
+            <h1 style="text-align: center; font-size: 2.5rem; margin-bottom: 30px;">
+            Your friendly neighborhood business advisor
+            </h1>
+            """, 
+            unsafe_allow_html=True
+        )
+        
+        st.markdown(
+            """
+            <p style="text-align: center; font-size: 1.2rem; margin-bottom: 40px; color: #555;">
+            Strategic Synthesis AI analyzes your business data, generates comprehensive strategy plans, 
+            and builds tailored presentations for different stakeholders using the power of AI
+            </p>
+            """, 
+            unsafe_allow_html=True
+        )
+        
+        col_btn1, col_btn2, col_btn3 = st.columns([1, 2, 1])
+        with col_btn2:
+            if st.button("Lets get workin'!", use_container_width=True, type="primary"):
+                start_app()
+                st.rerun()
+
+# Main Application
+else:
+    st.title("Strategic Synthesis AI")
+
+    # File uploader
+    uploaded_files = st.file_uploader("Attach anything that will help me understand your business 😄", accept_multiple_files=True)
+    attached_text = ""  # Store all uploaded content here
+
+    if uploaded_files:
+        for file in uploaded_files:
+            extracted = extract_text(file)
+            attached_text += f"\n\n--- File: {file.name} ---\n{extracted}"
+        
+        # Only fetch case studies if we have new content and haven't fetched them yet
+        if attached_text and not st.session_state.case_studies_fetched:
+            with st.spinner('Tapping into the infinite wisdom of universe...'):
+                st.session_state.context_prompt = str(get_rich_case_studies(attached_text)).replace("{", "{{").replace("}", "}}")
+                st.session_state.case_studies_fetched = True
+                st.success("Case studies retrieved successfully!")
+
+    llm = get_llm()
+
+    # Use the stored context prompt from session state
+    context_prompt = st.session_state.context_prompt
+
+    # Prompt Template (inject file content here)
+    system_prompt = f"""
+    You are a world-class Strategic Business Advisor helping businesses across industries design effective business strategies to support growth, innovation, and long-term success.
+
+    Carefully analyze the content provided by the user (if it is provided) to understand their current business model, challenges, or goals.
+
+    You should explicitly refer to the reference case studies provided by the system to craft thoughtful, tailored, and actionable responses to the user's questions.
+    It is very important to provide reference http URLs from the Relevant Case Studies in your response
+
+    Analyze the following key factors for your reponse:-
+    1. 	Business Context Industry specifics (e.g., tech, FMCG, healthcare) -Market structure (monopoly, oligopoly, fragmented, etc.), Regulatory environment (local/global, highly regulated or not), Stage of business lifecycle (startup, growth, maturity, decline)
+    2. 	Strategic Intent Vision/Mission alignment - Growth objectives (scale, profit, market leadership, innovation), Geographic goals (domestic focus vs global expansion), Long-term vs. short-term priorities
+    3. 	Key Capability Inputs Core competencies (e.g., R&D, brand strength, distribution) - Technology maturity, Talent & leadership, Operational infrastructure
+    4. 	Customer Dimensions Target segment behavior - Customer jobs to be done, Channel preferences (D2C, retail, B2B), Value perception and willingness to pay
+    5. 	Competitive Forces Rivalry intensity - Barriers to entry, Threat of substitutes, Supplier/buyer power (Porter's Five Forces), Innovation speed in the industry
+    6. 	Strategic Options Spectrum Growth levers (market penetration, product dev, M&A, diversification) - Business models (B2B/B2C, SaaS, subscription, platform), Differentiation methods (price, innovation, service, brand), Focus areas (niche vs mass market)
+    7. 	Risk & Resilience Metrics Financial risk tolerance, Operational risk (supply chain fragility), Market volatility exposure, Crisis adaptability (e.g., COVID learnings)
+    8. 	Measurement and Governance Key Performance Indicators (KPIs) -Feedback loops, Decision accountability, Scalability of strategy
+
+    Based upon this analysis, what are the gaps in the existing business and develop detailed 3 month, 6 month and 1 year plan y first asking user what they want to know.
+
+    Do not make up information or assumptions. If the user content is insufficient to fully answer a question, clearly say so and suggest what additional information would help.
+
+    Be clear, insightful, and professional — your goal is to act as a trusted strategic advisor.
+
+    --- Attached User Content ---
+    {attached_text}
+
+    --- Relevant Case Studies ---
+    {context_prompt}
+
+    """
+
+    # Set up memory
+    msgs = StreamlitChatMessageHistory(key="langchain_messages")
+
+    prompt = ChatPromptTemplate.from_messages(
+        [
+            ("system", system_prompt),
+            MessagesPlaceholder(variable_name="history"),
+            ("human", "{question}"),
+        ]
+    )
+
+    chain = prompt | llm
+    chain_with_history = RunnableWithMessageHistory(
+        chain,
+        lambda session_id: msgs,
+        input_messages_key="question",
+        history_messages_key="history",
+    )
+
+    # Render current messages from StreamlitChatMessageHistory
+    for msg in msgs.messages:
+        if msg.type == 'AIMessageChunk':
+            st.chat_message('ai').write(msg.content)
+        else:
+            st.chat_message(msg.type).write(msg.content)
+
+    # If user inputs a new prompt, generate and draw a new response
+    if user_input := st.chat_input("How can I help?"):
+        st.chat_message("human").write(user_input)
+
+        # New messages are saved to history automatically by Langchain during run
+        config = {"configurable": {"session_id": "any"}}
+        st.chat_message('ai').write_stream(chain_with_history.stream({"question": user_input}, config))
