@@ -103,7 +103,7 @@ if not st.session_state.welcome_complete:
             """
             <p style="text-align: center; font-size: 1.2rem; margin-bottom: 40px; color: #555;">
             Strategic Synthesis AI analyzes your business data, generates comprehensive strategy plans, 
-            and builds tailored presentations for different stakeholders using the power of AI and Microsoft's ecosystem.
+            and builds tailored presentations for different stakeholders using the power of AI
             </p>
             """, 
             unsafe_allow_html=True
@@ -111,7 +111,7 @@ if not st.session_state.welcome_complete:
         
         col_btn1, col_btn2, col_btn3 = st.columns([1, 2, 1])
         with col_btn2:
-            if st.button("Get your organization started!", use_container_width=True, type="primary"):
+            if st.button("Lets get workin'!", use_container_width=True, type="primary"):
                 start_app()
                 st.rerun()
 
