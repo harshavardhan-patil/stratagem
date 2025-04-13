@@ -1,6 +1,6 @@
 import streamlit as st
 from src.utils.dynamic_ppt_generator import generate_dynamic_pptx_from_chat
-st.set_page_config(layout='wide', initial_sidebar_state='expanded', page_title="Strategic Synthesis AI")
+st.set_page_config(layout='wide', initial_sidebar_state='expanded', page_title="StrataGem")
 
 import os
 import streamlit as st
@@ -116,7 +116,7 @@ if not st.session_state.welcome_complete:
             <div style="background-color: #222; padding: 30px; border-radius: 10px; margin-bottom: 20px; text-align: center;">
                 <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 10px;">
                     <span style="color: #FFB627; font-size: 40px; margin-right: 10px;">&#9733;</span>
-                    <h1 style="color: white; margin: 0;">Strategic Synthesis AI</h1>
+                    <h1 style="color: white; margin: 0;">StrataGem</h1>
                 </div>
             </div>
             """, 
@@ -135,7 +135,7 @@ if not st.session_state.welcome_complete:
         st.markdown(
             """
             <p style="text-align: center; font-size: 1.2rem; margin-bottom: 40px; color: #555;">
-            Strategic Synthesis AI analyzes your business data, generates comprehensive strategy plans, 
+            StrataGem analyzes your business data, generates comprehensive strategy plans, 
             and builds tailored presentations for different stakeholders using the power of AI 
             </p>
             """, 
@@ -152,7 +152,7 @@ if not st.session_state.welcome_complete:
 else:
     # Set beige background when in main app
     set_beige_bg()
-    st.title("Strategic Synthesis AI")
+    st.title("StrataGem")
 
     # File uploader
     uploaded_files = st.file_uploader("Attach anything that will help me understand your business 😄", accept_multiple_files=True)
@@ -234,26 +234,29 @@ else:
         else:
             st.chat_message(msg.type).write(msg.content)
 
+    trigger_keywords = ["ppt", "powerpoint", "create ppt", "generate ppt", "presentation"]
     # If user inputs a new prompt, generate and draw a new response
     if user_input := st.chat_input("How can I help?"):
         st.chat_message("human").write(user_input)
+        if any(keyword in user_input.lower() for keyword in trigger_keywords):
+            st.chat_message('ai').write("Sure, let me whip that right up!")
+            try:
+                chat_history = "\n".join([f"{msg.type.upper()}: {msg.content}" for msg in msgs.messages])
+                pptx_path = generate_dynamic_pptx_from_chat(chat_history, llm)
 
-        # New messages are saved to history automatically by Langchain during run
-        config = {"configurable": {"session_id": "any"}}
-        st.chat_message('ai').write_stream(chain_with_history.stream({"question": user_input}, config))
-
-    trigger_keywords = ["ppt", "powerpoint", "create ppt", "generate ppt", "presentation"]
-    if user_input and any(keyword in user_input.lower() for keyword in trigger_keywords):
-        try:
-            chat_history = "\n".join([f"{msg.type.upper()}: {msg.content}" for msg in msgs.messages])
-            pptx_path = generate_dynamic_pptx_from_chat(chat_history, llm)
-
-            with open(pptx_path, "rb") as f:
-                st.download_button(
-                    label="⬇️ Download Presentation (.pptx)",
-                    data=f,
-                    file_name="Strategic_Plan_Generated.pptx",
-                    mime="application/vnd.openxmlformats-officedocument.presentationml.presentation"
+                with open(pptx_path, "rb") as f:
+                    st.download_button(
+                        label="⬇️ Download Presentation (.pptx)",
+                        data=f,
+                        file_name="Strategic_Plan_Generated.pptx",
+                        mime="application/vnd.openxmlformats-officedocument.presentationml.presentation"
                 )
-        except Exception as e:
-            st.error(f"⚠️ Failed to generate presentation: {e}")
+            except Exception as e:
+                st.error(f"⚠️ Failed to generate presentation: {e}")
+        else:
+            # New messages are saved to history automatically by Langchain during run
+            config = {"configurable": {"session_id": "any"}}
+            st.chat_message('ai').write_stream(chain_with_history.stream({"question": user_input}, config))
+
+
+

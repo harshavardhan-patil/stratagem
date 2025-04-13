@@ -50,4 +50,20 @@ def generate_dynamic_pptx_from_chat(chat_history, llm):
 
     output_file = tempfile.NamedTemporaryFile(delete=False, suffix=".pptx")
     prs.save(output_file.name)
+
+
+    path_python_file = "roadmap_creation.py"
+    prompt = f""" You are expert in executing the python file and generating roadmap plans for the business.
+        Based on the following conversation history, generate structured content for 3 month, 6 month and 1 year roadmap plan by running the python file using
+        command.
+
+        --- Chat History ---
+        {chat_history}
+
+        
+
+         Command
+        python {path_python_file}
+        """
+
     return output_file.name

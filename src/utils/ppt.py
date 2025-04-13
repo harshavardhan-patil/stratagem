@@ -6,8 +6,12 @@ from pptx.enum.shapes import MSO_AUTO_SHAPE_TYPE
 from pptx.enum.text import PP_ALIGN
 from pptx.enum.shapes import MSO_CONNECTOR
 from pptx.enum.shapes import MSO_SHAPE_TYPE, MSO_AUTO_SHAPE_TYPE
+from pptx import Presentation
+from pptx.util import Inches
+import os
 import tempfile
 import random
+import subprocess
 
 ENABLE_DECORATIVE_CIRCLES = False
 ENABLE_TITLE_BAR_PATTERNS = False
@@ -854,6 +858,11 @@ def add_financial_chart_slide_with_data(prs, financial_data):
 
 # --- Generate Full Styled PPT ---
 def generate_styled_pptx():
+    try:
+        subprocess.run(["python3", "roadmap_creation.py"], check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"❌ Error running roadmap_creation.py: {e}")
+        
     prs = Presentation()
 
     add_styled_title_slide(prs, "Business Growth Strategy Proposal", "Prepared by Strategic Synthesis AI")
@@ -881,6 +890,13 @@ def generate_styled_pptx():
     ])
     add_roadmap_slide(prs)
 
+    # ✅ Add Gemini-generated charts WITH CONTEXT
+    add_section_divider_slide(prs, "Strategic Visuals")
+    for image in ["circular_sector_chart.png", "marketing_roadmap_final.png"]:
+        if os.path.exists(image):
+            slide = prs.slides.add_slide(prs.slide_layouts[6])
+            slide.shapes.add_picture(image, Inches(1), Inches(1), height=Inches(5.5))
+
     add_section_divider_slide(prs, "Financial Outlook")
     add_financial_chart_slide(prs)
     clean_financial_slide(prs)
@@ -891,6 +907,8 @@ def generate_styled_pptx():
         "Improved brand positioning in AI infrastructure sector.",
         "Sustainable operational margin with lean team."
     ])
+
+    subprocess.run(["python3", "roadmap_creation.py"], check=True)
 
     output_file = tempfile.NamedTemporaryFile(delete=False, suffix=".pptx")
     prs.save(output_file.name)
