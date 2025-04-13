@@ -1,4 +1,5 @@
 from google import genai
+import os
 
 client = genai.Client(api_key="AIzaSyAvVxeWVhKEx0Q-3UOdjfyC2cZXHT_czEw")
 
@@ -274,3 +275,6 @@ with open("combined_viz.py", "w") as f:
     f.write(updated_code)
 
 print("✅ combined_viz.py has been updated with Gemini's modified code.")
+
+
+os.system("python3 combined_viz.py")
