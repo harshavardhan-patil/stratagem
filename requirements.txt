@@ -28,4 +28,6 @@ fitz
 frontend
 python-pptx
 python-docx
+google-genai
+pycirclize
 -e .

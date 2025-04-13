@@ -5,6 +5,7 @@ st.set_page_config(layout='wide', initial_sidebar_state='expanded', page_title="
 import os
 import streamlit as st
 import base64
+from src.utils.roadmap_creation import generate_roadmap
 
 # Function to set background image
 def set_jpg_as_page_bg(bg):
@@ -231,14 +232,21 @@ else:
     for msg in msgs.messages:
         if msg.type == 'AIMessageChunk':
             st.chat_message('ai').write(msg.content)
+        elif msg.type == 'ai' and msg.content.startswith('IMAGE_REFS:'):
+            # This is our special image reference message
+            image_paths = msg.content.replace('IMAGE_REFS:', '').split(',')
+            for img_path in image_paths:
+                if os.path.exists(img_path):
+                    st.chat_message('ai').image(img_path)
         else:
             st.chat_message(msg.type).write(msg.content)
 
-    trigger_keywords = ["ppt", "powerpoint", "create ppt", "generate ppt", "presentation"]
+    ppt_trigger_keywords = ["ppt", "powerpoint", "create ppt", "generate ppt", "presentation"]
+    roadmap_trigger_keywords = ["ppt", "powerpoint", "create ppt", "generate ppt", "roadmap"]
     # If user inputs a new prompt, generate and draw a new response
     if user_input := st.chat_input("How can I help?"):
         st.chat_message("human").write(user_input)
-        if any(keyword in user_input.lower() for keyword in trigger_keywords):
+        if any(keyword in user_input.lower() for keyword in ppt_trigger_keywords):
             st.chat_message('ai').write("Sure, let me whip that right up!")
             try:
                 chat_history = "\n".join([f"{msg.type.upper()}: {msg.content}" for msg in msgs.messages])
@@ -253,6 +261,26 @@ else:
                 )
             except Exception as e:
                 st.error(f"⚠️ Failed to generate presentation: {e}")
+        elif any(keyword in user_input.lower() for keyword in roadmap_trigger_keywords):
+            st.chat_message('ai').write("Sure, let me whip that right up!")
+            try:
+                chat_history = "\n".join([f"{msg.type.upper()}: {msg.content}" for msg in msgs.messages])
+                if generate_roadmap(chat_history):
+                    # Create a special message to store image references
+                    image_paths = []
+                    for i in range(4):
+                        if os.path.exists(f"img{i}.jpg"):
+                            image_paths.append(f"img{i}.jpg")
+                            st.image(f"img{i}.jpg")
+                    
+                    # Only add to history if we found images
+                    if image_paths:
+                        # Store image references in the chat history as a special format
+                        image_references = "IMAGE_REFS:" + ",".join(image_paths)
+                        msgs.add_ai_message(image_references)
+                        
+            except Exception as e:
+                st.error(f"⚠️ Failed to generate img: {e}")
         else:
             # New messages are saved to history automatically by Langchain during run
             config = {"configurable": {"session_id": "any"}}

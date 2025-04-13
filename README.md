@@ -126,6 +126,9 @@ We plan to have StrataGem accessible via an live Streamlit app as well as improv
 ### Verified Sources to avoid AI Hallucinations
 <img src='static/stratagem_chat1.jpeg' alt='Chat2'/>
 
+### Generate Roadmap Visualization
+<img src='static/stratagem_roadmap.jpeg' alt='Chat2'/>
+
 ### Generate Presentations for pitching
 <img src='static/stratagem_chat2.jpeg' alt='Chat3'/>
 <img src='static/stratagem_ppt.jpeg' alt='Chat4'/>
