@@ -6,8 +6,12 @@ from pptx.enum.shapes import MSO_AUTO_SHAPE_TYPE
 from pptx.enum.text import PP_ALIGN
 from pptx.enum.shapes import MSO_CONNECTOR
 from pptx.enum.shapes import MSO_SHAPE_TYPE, MSO_AUTO_SHAPE_TYPE
+from pptx import Presentation
+from pptx.util import Inches
+import os
 import tempfile
 import random
+import subprocess
 
 ENABLE_DECORATIVE_CIRCLES = False
 ENABLE_TITLE_BAR_PATTERNS = False
@@ -21,8 +25,8 @@ def get_rgb_components(color: RGBColor):
     return r, g, b
 
 # --- Enhanced Style Constants ---
-TITLE_FONT_SIZE = Pt(44)
-SUBTITLE_FONT_SIZE = Pt(28)
+TITLE_FONT_SIZE = Pt(30)
+SUBTITLE_FONT_SIZE = Pt(23)
 HEADING_FONT_SIZE = Pt(32)
 BODY_FONT_SIZE = Pt(20)
 
@@ -234,7 +238,7 @@ def add_styled_title_slide(prs, title, subtitle):
 
     center_overlay = slide.shapes.add_shape(
         MSO_AUTO_SHAPE_TYPE.ROUNDED_RECTANGLE,
-        Inches(1), Inches(1.5), Inches(8), Inches(4.5)
+        Inches(1.5), Inches(1.5), Inches(3), Inches(5)
     )
     center_overlay.fill.solid()
     center_overlay.fill.fore_color.rgb = COLORS["background"]
@@ -243,32 +247,35 @@ def add_styled_title_slide(prs, title, subtitle):
 
     accent_bar = slide.shapes.add_shape(
         MSO_AUTO_SHAPE_TYPE.RECTANGLE,
-        Inches(0.8), Inches(2), Inches(0.15), Inches(3.5)
+        Inches(0.6), Inches(2), Inches(0.15), Inches(3.5)
     )
     accent_bar.fill.solid()
     accent_bar.fill.fore_color.rgb = COLORS["primary"]
     accent_bar.line.fill.background()
 
-    title_box = slide.shapes.add_textbox(Inches(1.6), Inches(2.1), Inches(7.4), Inches(1.5))
-    title_tf = title_box.text_frame
-    title_tf.word_wrap = True
-    p = title_tf.paragraphs[0]
-    p.text = title
-    p.font.size = Pt(54)
-    p.font.bold = True
-    p.font.color.rgb = COLORS["text"]
-    p.font.name = "Calibri"
-    p.alignment = PP_ALIGN.LEFT
+    # Title & Subtitle in one textbox (stacked vertically)
+    text_box = slide.shapes.add_textbox(Inches(1.6), Inches(2.1), Inches(6.0), Inches(5.0))
+    text_frame = text_box.text_frame
+    text_frame.word_wrap = True
 
-    subtitle_box = slide.shapes.add_textbox(Inches(1.6), Inches(3.5), Inches(7.4), Inches(1))
-    subtitle_tf = subtitle_box.text_frame
-    subtitle_tf.word_wrap = True
-    p = subtitle_tf.paragraphs[0]
-    p.text = subtitle
-    p.font.size = Pt(28)
-    p.font.color.rgb = COLORS["secondary"]
-    p.font.name = "Calibri"
-    p.alignment = PP_ALIGN.LEFT
+    # Title Paragraph
+    title_p = text_frame.paragraphs[0]
+    title_p.alignment = PP_ALIGN.LEFT
+    title_run = title_p.add_run()
+    title_run.text = title
+    title_run.font.size = Pt(30)
+    title_run.font.bold = True
+    title_run.font.color.rgb = COLORS["text"]
+    title_run.font.name = "Calibri"
+
+    # Subtitle Paragraph (new line)
+    subtitle_p = text_frame.add_paragraph()
+    subtitle_p.alignment = PP_ALIGN.LEFT  # Or RIGHT if you prefer
+    subtitle_run = subtitle_p.add_run()
+    subtitle_run.text = subtitle
+    subtitle_run.font.size = Pt(25)
+    subtitle_run.font.color.rgb = COLORS["secondary"]
+    subtitle_run.font.name = "Calibri"
 
     if ENABLE_DECORATIVE_CIRCLES:
         for i in range(3):
@@ -302,11 +309,11 @@ def add_section_divider_slide(prs, title):
     overlay.fill.transparency = 40000  # Somewhat transparent
     
     # Large, bold title text
-    title_box = slide.shapes.add_textbox(Inches(1), Inches(3), Inches(8), Inches(1.5))
+    title_box = slide.shapes.add_textbox(Inches(1), Inches(2), Inches(5), Inches(1.5))
     title_tf = title_box.text_frame
     p = title_tf.paragraphs[0]
     p.text = title.upper()  # Uppercase for impact
-    p.font.size = Pt(60)
+    p.font.size = Pt(45)
     p.font.bold = True
     p.font.color.rgb = COLORS["light_text"]
     p.font.name = "Calibri"
@@ -499,106 +506,103 @@ def add_roadmap_slide(prs):
     slide.background.fill.fore_color.rgb = COLORS["background"]
     add_dotted_background(slide)
 
-    tb = slide.shapes.add_shape(
-        MSO_AUTO_SHAPE_TYPE.ROUNDED_RECTANGLE,
-        Inches(0), Inches(0), Inches(10), Inches(1.2)
-    )
-    tb.fill.solid()
-    tb.fill.fore_color.rgb = COLORS["primary"]
-    tb.line.fill.background()
-
+    # --- Title ---
     title_box = slide.shapes.add_textbox(Inches(0.5), Inches(0.2), Inches(9), Inches(1))
     title_p = title_box.text_frame.paragraphs[0]
     title_p.text = "Implementation Roadmap"
     title_p.font.size = TITLE_FONT_SIZE
     title_p.font.bold = True
-    title_p.font.color.rgb = COLORS["light_text"]
+    title_p.font.color.rgb = COLORS["primary"]
     title_p.font.name = "Calibri"
 
-    timeline = slide.shapes.add_shape(
-        MSO_AUTO_SHAPE_TYPE.RECTANGLE,
-        Inches(1), Inches(3), Inches(8), Inches(0.1)
+    # --- Key Activities Box ---
+    act_box = slide.shapes.add_shape(
+        MSO_AUTO_SHAPE_TYPE.ROUNDED_RECTANGLE,
+        Inches(1), Inches(1.2), Inches(8), Inches(1.5)
     )
-    timeline.fill.solid()
-    timeline.fill.fore_color.rgb = COLORS["text"]
-    timeline.line.fill.background()
+    act_box.fill.solid()
+    act_box.fill.fore_color.rgb = RGBColor(255, 255, 255)
+    act_box.line.color.rgb = COLORS["chart_colors"][0]
 
+    act_text = slide.shapes.add_textbox(
+        Inches(1.2), Inches(1.3), Inches(7.6), Inches(1.3)
+    )
+    act_tf = act_text.text_frame
+    act_tf.word_wrap = True
+
+    p_title = act_tf.paragraphs[0]
+    p_title.text = "Key Activities:"
+    p_title.font.size = Pt(14)
+    p_title.font.bold = True
+    p_title.font.color.rgb = COLORS["text"]
+
+    p_bullets = act_tf.add_paragraph()
+    p_bullets.text = "• Finalize strategy    • Assemble team    • Kick-off planning"
+    p_bullets.font.size = Pt(12)
+    p_bullets.font.color.rgb = COLORS["text"]
+
+    # --- Arrow for Timeline ---
+    arrow_y = 3.1
     arrow = slide.shapes.add_shape(
         MSO_AUTO_SHAPE_TYPE.RIGHT_ARROW,
-        Inches(9), Inches(2.9), Inches(0.5), Inches(0.3)
+        Inches(1.5), Inches(arrow_y), Inches(7), Inches(0.3)
     )
     arrow.fill.solid()
     arrow.fill.fore_color.rgb = COLORS["text"]
     arrow.line.fill.background()
 
+    # --- Phases Data ---
     phases = [
-        {"name": "Planning", "duration": "0-3 months", "color": COLORS["chart_colors"][0]},
-        {"name": "Rollout", "duration": "4-6 months", "color": COLORS["chart_colors"][1]},
-        {"name": "Expansion", "duration": "7-12 months", "color": COLORS["chart_colors"][2]}
+        {"name": "Planning", "duration": "0–3 months", "color": COLORS["chart_colors"][0]},
+        {"name": "Rollout", "duration": "4–6 months", "color": COLORS["chart_colors"][1]},
+        {"name": "Expansion", "duration": "7–12 months", "color": COLORS["chart_colors"][2]}
     ]
 
+    spacing = 2.5
+    base_x = 2.3  # Center of first node
     for i, phase in enumerate(phases):
-        x = 2 + i * 3
+        x_center = base_x + i * spacing
+        node_y = arrow_y + 0.1
 
+        # Circle node
         node = slide.shapes.add_shape(
             MSO_AUTO_SHAPE_TYPE.OVAL,
-            Inches(x), Inches(3), Inches(0.8), Inches(0.8)
+            Inches(x_center - 0.25), Inches(node_y), Inches(0.5), Inches(0.5)
         )
         node.fill.solid()
         node.fill.fore_color.rgb = phase["color"]
         node.line.fill.background()
         p = node.text_frame.paragraphs[0]
         p.text = str(i + 1)
-        p.font.size = Pt(18)
+        p.font.size = Pt(14)
         p.font.bold = True
         p.font.color.rgb = COLORS["light_text"]
         p.font.name = "Calibri"
         p.alignment = PP_ALIGN.CENTER
 
+        # Phase name below
         lbl = slide.shapes.add_textbox(
-            Inches(x - 0.6), Inches(4), Inches(2), Inches(0.6)
+            Inches(x_center - 0.7), Inches(node_y + 0.6), Inches(1.4), Inches(0.3)
         )
         p2 = lbl.text_frame.paragraphs[0]
         p2.text = phase["name"]
-        p2.font.size = Pt(18)
+        p2.font.size = Pt(12)
         p2.font.bold = True
         p2.font.color.rgb = COLORS["text"]
         p2.font.name = "Calibri"
         p2.alignment = PP_ALIGN.CENTER
 
+        # Duration below label
         dur = slide.shapes.add_textbox(
-            Inches(x - 0.6), Inches(4.4), Inches(2), Inches(0.5)
+            Inches(x_center - 0.7), Inches(node_y + 0.95), Inches(1.4), Inches(0.3)
         )
         p3 = dur.text_frame.paragraphs[0]
         p3.text = phase["duration"]
-        p3.font.size = Pt(14)
+        p3.font.size = Pt(10)
         p3.font.italic = True
         p3.font.color.rgb = COLORS["secondary"]
         p3.font.name = "Calibri"
         p3.alignment = PP_ALIGN.CENTER
-
-        act_box = slide.shapes.add_shape(
-            MSO_AUTO_SHAPE_TYPE.ROUNDED_RECTANGLE,
-            Inches(x - 0.75), Inches(1.8), Inches(2.3), Inches(0.9)
-        )
-        act_box.fill.solid()
-        act_box.fill.fore_color.rgb = RGBColor(255, 255, 255)
-        act_box.line.color.rgb = phase["color"]
-
-        act_text = slide.shapes.add_textbox(
-            Inches(x - 0.65), Inches(1.9), Inches(2.1), Inches(0.7)
-        )
-        act_tf = act_text.text_frame
-        act_tf.word_wrap = True
-        p4 = act_tf.paragraphs[0]
-        p4.text = "Key Activities:"
-        p4.font.size = Pt(12)
-        p4.font.bold = True
-        p4.font.color.rgb = COLORS["text"]
-        p5 = act_tf.add_paragraph()
-        p5.text = "• Activity 1\n• Activity 2"
-        p5.font.size = Pt(10)
-        p5.font.color.rgb = COLORS["text"]
 
 # --- Financial Chart Slide ---
 def add_financial_chart_slide(prs):
@@ -614,36 +618,6 @@ def add_financial_chart_slide(prs):
     title_p.font.bold = True
     title_p.font.color.rgb = COLORS["primary"]
     title_p.font.name = "Calibri"
-
-    # Chart bars (simple visual simulation)
-    items = [
-        ("Initial Investment", 2.5, COLORS["chart_colors"][0]),
-        ("Expected Revenue", 4.2, COLORS["chart_colors"][1]),
-        ("Operational Costs", 2.0, COLORS["chart_colors"][2]),
-        ("Break-even", 3.1, COLORS["chart_colors"][3])
-    ]
-
-    for i, (label, height, color) in enumerate(items):
-        x = 1.0 + i * 2.1
-        bar = slide.shapes.add_shape(
-            MSO_AUTO_SHAPE_TYPE.RECTANGLE,
-            Inches(x),
-            Inches(5.5 - height),
-            Inches(1),
-            Inches(height)
-        )
-        bar.fill.solid()
-        bar.fill.fore_color.rgb = color
-        bar.line.fill.background()
-
-        label_box = slide.shapes.add_textbox(Inches(x - 0.2), Inches(5.7), Inches(1.4), Inches(0.5))
-        label_tf = label_box.text_frame
-        p = label_tf.paragraphs[0]
-        p.text = label
-        p.font.size = Pt(12)
-        p.font.color.rgb = COLORS["text"]
-        p.font.name = "Calibri"
-        p.alignment = PP_ALIGN.CENTER
 
 def add_swot_slide_with_data(prs, swot_data):
     """Creates a SWOT analysis slide with the provided data"""
@@ -758,7 +732,7 @@ def add_roadmap_slide_with_data(prs, roadmap_data):
 
     timeline = slide.shapes.add_shape(
         MSO_AUTO_SHAPE_TYPE.RECTANGLE,
-        Inches(1), Inches(3), Inches(8), Inches(0.1)
+        Inches(1), Inches(6), Inches(8), Inches(0.1)
     )
     timeline.fill.solid()
     timeline.fill.fore_color.rgb = COLORS["text"]
@@ -863,73 +837,32 @@ def add_financial_chart_slide_with_data(prs, financial_data):
     title_p.font.bold = True
     title_p.font.color.rgb = COLORS["primary"]
     title_p.font.name = "Calibri"
-
-    # Extract key metrics from financial data
-    metrics = []
-    for item in financial_data:
-        if "revenue" in item.lower():
-            metrics.append(("Revenue", 4.2, COLORS["chart_colors"][0]))
-        elif "investment" in item.lower():
-            metrics.append(("Investment", 2.5, COLORS["chart_colors"][1]))
-        elif "cost" in item.lower() or "expense" in item.lower():
-            metrics.append(("Costs", 2.0, COLORS["chart_colors"][2]))
-        elif "break" in item.lower() or "profit" in item.lower():
-            metrics.append(("Profit", 3.1, COLORS["chart_colors"][3]))
     
-    # If we didn't extract enough metrics, add defaults
-    default_items = [
-        ("Revenue", 4.2, COLORS["chart_colors"][0]),
-        ("Investment", 2.5, COLORS["chart_colors"][1]),
-        ("Costs", 2.0, COLORS["chart_colors"][2]),
-        ("Profit", 3.1, COLORS["chart_colors"][3])
-    ]
-    
-    # Use extracted metrics, fill with defaults if needed
-    items = metrics[:4] if metrics else default_items
-    
-    # Add the financial data as text
-    data_box = slide.shapes.add_textbox(Inches(1), Inches(1.5), Inches(8), Inches(1.3))
+    # Add the financial data as text bullets
+    data_box = slide.shapes.add_textbox(Inches(1), Inches(1.5), Inches(8), Inches(3))
     data_tf = data_box.text_frame
     data_tf.word_wrap = True
     
-    for i, item in enumerate(financial_data[:3]):  # Top 3 financial points
+    for i, item in enumerate(financial_data[:5]):  # Show up to 5 items
         if i == 0:
             p = data_tf.paragraphs[0]
         else:
             p = data_tf.add_paragraph()
-            
+        
         p.text = f"• {item}"
         p.font.size = Pt(16)
         p.font.color.rgb = COLORS["text"]
-        p.space_after = Pt(6)
-
-    # Chart bars (simple visual simulation)
-    for i, (label, height, color) in enumerate(items):
-        x = 1.0 + i * 2.1
-        bar = slide.shapes.add_shape(
-            MSO_AUTO_SHAPE_TYPE.RECTANGLE,
-            Inches(x),
-            Inches(5.5 - height),
-            Inches(1),
-            Inches(height)
-        )
-        bar.fill.solid()
-        bar.fill.fore_color.rgb = color
-        bar.line.fill.background()
-
-        label_box = slide.shapes.add_textbox(Inches(x - 0.2), Inches(5.7), Inches(1.4), Inches(0.5))
-        label_tf = label_box.text_frame
-        p = label_tf.paragraphs[0]
-        p.text = label
-        p.font.size = Pt(12)
-        p.font.color.rgb = COLORS["text"]
         p.font.name = "Calibri"
-        p.alignment = PP_ALIGN.CENTER
-
+        p.space_after = Pt(6)
 
 
 # --- Generate Full Styled PPT ---
 def generate_styled_pptx():
+    try:
+        subprocess.run(["python3", "roadmap_creation.py"], check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"❌ Error running roadmap_creation.py: {e}")
+        
     prs = Presentation()
 
     add_styled_title_slide(prs, "Business Growth Strategy Proposal", "Prepared by Strategic Synthesis AI")
@@ -957,6 +890,13 @@ def generate_styled_pptx():
     ])
     add_roadmap_slide(prs)
 
+    # ✅ Add Gemini-generated charts WITH CONTEXT
+    add_section_divider_slide(prs, "Strategic Visuals")
+    for image in ["circular_sector_chart.png", "marketing_roadmap_final.png"]:
+        if os.path.exists(image):
+            slide = prs.slides.add_slide(prs.slide_layouts[6])
+            slide.shapes.add_picture(image, Inches(1), Inches(1), height=Inches(5.5))
+
     add_section_divider_slide(prs, "Financial Outlook")
     add_financial_chart_slide(prs)
     clean_financial_slide(prs)
@@ -967,6 +907,8 @@ def generate_styled_pptx():
         "Improved brand positioning in AI infrastructure sector.",
         "Sustainable operational margin with lean team."
     ])
+
+    subprocess.run(["python3", "roadmap_creation.py"], check=True)
 
     output_file = tempfile.NamedTemporaryFile(delete=False, suffix=".pptx")
     prs.save(output_file.name)
