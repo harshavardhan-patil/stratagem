@@ -25,7 +25,7 @@ transformers
 torch
 langchain_community
 fitz
-docx
 frontend
-lan
+python-pptx
+python-docx
 -e .
