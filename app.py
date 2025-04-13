@@ -75,7 +75,8 @@ if uploaded_files:
 
 llm = get_llm()
 
-if attached_text:
+context_prompt = ""
+if attached_text != "":
     st.chat_message('assistant').write("*Searching for relevant case studies...*")
     context_prompt = str(get_rich_case_studies(attached_text)).replace("{", "{{").replace("}", "}}")
 # Prompt Template (inject file content here)
