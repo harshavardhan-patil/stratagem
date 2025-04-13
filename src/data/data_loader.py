@@ -14,6 +14,7 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.schema.document import Document
 from src.config import RAW_DATA_DIR
 from src.data.db import connect_to_db
+from src.data.constants import CATEGORIES
 
 # Initialize logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -29,47 +30,6 @@ embedding_model = os.getenv("EMBEDDING_MODEL", "mxbai-embed-large")  # Default f
 CHUNK_SIZE = 1000
 CHUNK_OVERLAP = 200
 
-# Define categories and their options
-CATEGORIES = {
-    'industry': [
-        'Technology', 'Healthcare', 'Finance', 'Retail', 'Manufacturing', 
-        'Education', 'Entertainment', 'Transportation', 'Energy', 'Real Estate',
-        'Hospitality', 'Agriculture', 'Construction', 'Telecommunications', 'Media'
-    ],
-    'company_size': [
-        'Startup', 'Small Business', 'Medium Business', 'Large Business', 
-        'Enterprise', 'Micro-Enterprise', 'Unicorn'
-    ],
-    'business_model': [
-        'B2B', 'B2C', 'B2B2C', 'C2C', 'B2G', 'D2C', 'Marketplace/Platform', 
-        'Freemium', 'Subscription', 'SaaS', 'PaaS', 'IaaS', 'Hardware/Product', 
-        'Service-Based', 'Franchise', 'Manufacturing', 'Retail', 'Wholesale'
-    ],
-    'growth_stage': [
-        'Pre-Seed/Idea Stage', 'Seed/Startup', 'Early Growth', 'Scaling', 
-        'Maturity', 'Expansion', 'Diversification', 'Consolidation', 
-        'Turnaround/Restructuring', 'Declining', 'Exit Preparation'
-    ],
-    'key_challenges': [
-        'Funding/Capital Access', 'Cash Flow Management', 'Market Entry', 
-        'Customer Acquisition', 'Customer Retention', 'Product Development', 
-        'Scaling Operations', 'Talent Acquisition/Retention', 'Competition', 
-        'Regulatory Compliance', 'Technology Adoption', 'Digital Transformation', 
-        'Supply Chain Optimization', 'Cost Reduction', 'Internationalization', 
-        'Brand Development', 'Innovation Management', 'Organizational Restructuring', 
-        'Merger/Acquisition Integration', 'Succession Planning', 'Crisis Management'
-    ],
-    'core_strategies': [
-        'Cost Leadership', 'Value-Based Pricing', 'Differentiation', 
-        'Market Focus/Niche', 'Diversification', 'Integration', 
-        'First Mover Advantage', 'Fast Follower', 'Growth Through Acquisition', 
-        'Organic Growth', 'Network Effects', 'Ecosystem Building', 
-        'Disruptive Innovation', 'Blue Ocean Strategy', 'Strategic Alliances/Partnerships', 
-        'Licensing/Franchising', 'Market Penetration', 'Customer Experience', 
-        'Technological Leadership', 'Sustainable/Green Strategy', 
-        'Digital Transformation', 'Platform Strategy', 'Lean Operations', 'Agile Methodology'
-    ]
-}
 
 def setup_classifiers(device="cuda"):
     """Initialize the zero-shot classification model for metadata extraction."""
@@ -81,6 +41,27 @@ def setup_classifiers(device="cuda"):
     )
     
     # Initialize embedding model based on environment settings
+    logger.info(f"Setting up embedding model...")
+    embeddings = None
+    
+    # too broke for OpenAI rn :)
+    # if model_provider.lower() == "openai":
+    #     from langchain_openai import OpenAIEmbeddings
+        
+    #     embeddings = OpenAIEmbeddings(
+    #         model=os.getenv("EMBEDDING_MODEL", "text-embedding-3-large")
+    #     )
+    # else:  # Default to ollama
+    from langchain_ollama import OllamaEmbeddings
+    
+    embeddings = OllamaEmbeddings(
+        model=embedding_model
+    )
+    
+    return classifier, embeddings
+
+def get_embedding_model():
+    """Initialize embedding model based on environment settings."""
     logger.info(f"Setting up embedding model...")
     embeddings = None
     
@@ -97,7 +78,7 @@ def setup_classifiers(device="cuda"):
             model=embedding_model
         )
     
-    return classifier, embeddings
+    return embeddings
 
 def parse_case_study(file_path: str) -> Dict[str, str]:
     """Extract title, source and content from a case study text file."""
@@ -297,6 +278,9 @@ def process_case_studies(directory_path: str):
             
             # Insert chunks and embeddings into database
             insert_chunks(conn, case_study_id, chunks, chunk_embeddings)
+
+            # Insert category embeddings
+            populate_category_embeddings(conn, case_study)
             
             logger.info(f"Successfully processed case study: {case_study['title']}")
             
@@ -304,6 +288,75 @@ def process_case_studies(directory_path: str):
             logger.error(f"Error processing {file_path}: {e}")
     
     conn.close()
+
+def format_categories_for_embedding(case_study: Dict[str, Any]) -> Dict[str, List[str]]:
+    """Format case study categories into a consistent structure for embedding."""
+    categories = {
+        "industry": [case_study.get("industry")] if case_study.get("industry") else [],
+        "company_size": [case_study.get("company_size")] if case_study.get("company_size") else [],
+        "business_model": [case_study.get("business_model")] if case_study.get("business_model") else [],
+        "growth_stage": [case_study.get("growth_stage")] if case_study.get("growth_stage") else [],
+        "key_challenges": case_study.get("key_challenges", []),
+        "core_strategies": case_study.get("core_strategies", [])
+    }
+    
+    # Remove None or empty values
+    for key, values in categories.items():
+        categories[key] = [v for v in values if v]
+    
+    return categories
+
+def categories_to_text(categories: Dict[str, List[str]]) -> str:
+    """Convert categories dictionary to a text string for embedding."""
+    text_parts = []
+    
+    for category, values in categories.items():
+        if values:
+            formatted_category = category.replace("_", " ")
+            values_str = ", ".join(values)
+            text_parts.append(f"{formatted_category}: {values_str}")
+    
+    return ". ".join(text_parts)
+
+def populate_category_embeddings(conn, case_study):
+    """Generate and store embeddings for all case studies' categories."""
+    # Initialize embedding model
+    embedding_model = get_embedding_model()
+    
+    cursor = conn.cursor()
+    
+    try:
+        # Format categories
+        categories = format_categories_for_embedding(case_study)
+        
+        # Convert to text for embedding
+        categories_text = categories_to_text(categories)
+        
+        # Generate embedding
+        embedding = embedding_model.embed_query(categories_text)
+        
+        # Insert or update in database
+        query = """
+        INSERT INTO case_study_category_embeddings 
+            (case_study_id, categories_json, categories_embedding)
+        VALUES 
+            (%s, %s, %s)
+        ON CONFLICT (case_study_id) 
+        DO UPDATE SET 
+            categories_json = EXCLUDED.categories_json,
+            categories_embedding = EXCLUDED.categories_embedding,
+            created_at = CURRENT_TIMESTAMP
+        """
+        
+        cursor.execute(query, (
+            case_study["id"],
+            json.dumps(categories),
+            embedding
+        ))
+    
+    except Exception as e:
+        logger.error(f"Error processing case study {case_study['id']}: {e}")
+
 
 
 

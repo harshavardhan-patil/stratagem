@@ -11,6 +11,7 @@ port = os.getenv("POSTGRES_PORT")
 dbname = os.getenv("POSTGRES_DB")
 user = os.getenv("POSTGRES_USER")
 password = os.getenv("POSTGRES_PASSWORD")
+
 emb_size = 1024  # for mxbai-embed-large
 
 def connect_to_db():
@@ -87,6 +88,16 @@ def setup_db():
     )
     """)
 
+    cursor.execute(f"""
+    CREATE TABLE IF NOT EXISTS case_study_category_embeddings (
+        id SERIAL PRIMARY KEY,
+        case_study_id INTEGER REFERENCES case_studies(id) UNIQUE,
+        categories_json JSONB NOT NULL,
+        categories_embedding vector({emb_size}),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+
 
     # Create indices
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_case_studies_industry ON case_studies(industry)")
@@ -94,6 +105,10 @@ def setup_db():
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_case_studies_business_model ON case_studies(business_model)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_case_studies_growth_stage ON case_studies(growth_stage)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_case_study_chunks_case_study_id ON case_study_chunks(case_study_id)")
+    cursor.execute(f"""
+    CREATE INDEX IF NOT EXISTS idx_case_study_category_embeddings 
+    ON case_study_category_embeddings USING ivfflat (categories_embedding vector_cosine_ops)
+    """)
     
     # Vector similarity search index
     cursor.execute(f"CREATE INDEX IF NOT EXISTS idx_case_study_chunks_embedding ON case_study_chunks USING ivfflat (embedding vector_cosine_ops)")

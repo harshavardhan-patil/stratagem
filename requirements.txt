@@ -23,4 +23,9 @@ selenium
 webdriver-manager
 transformers
 torch
+langchain_community
+fitz
+docx
+frontend
+lan
 -e .
