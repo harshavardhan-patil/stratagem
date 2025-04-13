@@ -1,5 +1,4 @@
 # StrataGem
-
 StrataGem is the business advisor you've always wished for :)
 
 We analyze your business data, generate comprehensive strategy plans, and build tailored presentations for different stakeholders
@@ -117,3 +116,16 @@ Throughout the development of this project, we were regularly reminded of the ma
 ## What's next for StrataGem
 One of the main things we would like to address is the privacy of business sensitive data being shared with  LLM providers and how we could scope this.
 We plan to have StrataGem accessible via an live Streamlit app as well as improve the small but mighty repository of business case studies that we currently have. We would also love to integrate/connect the PowerPoint generation part with Microsoft Copilot's existing capability. 
+
+## WebApp
+<img src='static/stratagem_banner.jpeg' alt='Header'/>
+
+### Interactive Advisor
+<img src='static/stratagem_chat.jpeg' alt='Chat1'/>
+
+### Verified Sources to avoid AI Hallucinations
+<img src='static/stratagem_chat1.jpeg' alt='Chat2'/>
+
+### Generate Presentations for pitching
+<img src='static/stratagem_chat2.jpeg' alt='Chat3'/>
+<img src='static/stratagem_ppt.jpeg' alt='Chat4'/>

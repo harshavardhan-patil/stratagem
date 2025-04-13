@@ -13,6 +13,7 @@ from pgvector.psycopg2 import register_vector
 import regex as re
 from dotenv import load_dotenv
 from src.data.constants import CATEGORIES
+from langchain_google_genai import ChatGoogleGenerativeAI
 
 load_dotenv()
 
