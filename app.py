@@ -1,5 +1,5 @@
 import streamlit as st
-
+from src.utils.dynamic_ppt_generator import generate_dynamic_pptx_from_chat
 st.set_page_config(layout='wide', initial_sidebar_state='expanded', page_title="Strategic Synthesis AI")
 
 import os
@@ -241,3 +241,19 @@ else:
         # New messages are saved to history automatically by Langchain during run
         config = {"configurable": {"session_id": "any"}}
         st.chat_message('ai').write_stream(chain_with_history.stream({"question": user_input}, config))
+
+    trigger_keywords = ["ppt", "powerpoint", "create ppt", "generate ppt", "presentation"]
+    if user_input and any(keyword in user_input.lower() for keyword in trigger_keywords):
+        try:
+            chat_history = "\n".join([f"{msg.type.upper()}: {msg.content}" for msg in msgs.messages])
+            pptx_path = generate_dynamic_pptx_from_chat(chat_history, llm)
+
+            with open(pptx_path, "rb") as f:
+                st.download_button(
+                    label="⬇️ Download Presentation (.pptx)",
+                    data=f,
+                    file_name="Strategic_Plan_Generated.pptx",
+                    mime="application/vnd.openxmlformats-officedocument.presentationml.presentation"
+                )
+        except Exception as e:
+            st.error(f"⚠️ Failed to generate presentation: {e}")
