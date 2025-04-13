@@ -4,7 +4,7 @@ StrataGem is the business advisor you've always wished for :)
 
 We analyze your business data, generate comprehensive strategy plans, and build tailored presentations for different stakeholders
 
-Built in Bitcamp 2025 @ UMD
+Built at Bitcamp 2025 @ UMD
 
 ## Project Organization
 
